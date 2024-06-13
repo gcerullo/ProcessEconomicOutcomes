@@ -322,15 +322,15 @@ cfAll_df <- cfAll_df %>%
 #add  current and improved plantations 
 euc_current <- cfAll_df %>%  filter(habitat == "eucalyptus") %>% 
   mutate(habitat = "eucalyptus_current")
-euc_improved <- cfAll_df %>%  filter(habitat == "eucalyptus") %>% 
-  mutate(habitat = "eucalyptus_improved")
+#euc_improved <- cfAll_df %>%  filter(habitat == "eucalyptus") %>% 
+#  mutate(habitat = "eucalyptus_improved")
 alb_current <- cfAll_df %>%  filter(habitat == "albizia") %>% 
   mutate(habitat = "albizia_current")
-alb_improved <- cfAll_df %>%  filter(habitat == "albizia") %>% 
-  mutate(habitat = "albizia_improved")
+#alb_improved <- cfAll_df %>%  filter(habitat == "albizia") %>% 
+#  mutate(habitat = "albizia_improved")
 
 cfAll_df <- cfAll_df %>% filter(!(habitat == "eucalyptus")) %>% filter(!(habitat == "albizia")) %>% 
-  rbind(alb_current,alb_improved,euc_improved,euc_current)
+  rbind(alb_current,euc_current)
 
 #keeping restored as restored costs the same as primary forest, as we incorporate the maintenance cost as part of the calculation 
 restored <- cfAll_df %>% filter(habitat == "primary", original_habitat == "primary") %>%  mutate(
@@ -344,7 +344,7 @@ stays_deforested <- data.frame(original_habitat = "deforested", habitat = "defor
 cfAll_df<- cfAll_df %>% rbind(stays_deforested) %>% rbind(restored) %>% distinct()
 # =================== write cashflow output  ======================================
 
-write.csv(cfAll_df,"HabByAgeCashflows.csv",row.names = FALSE)
+write.csv(cfAll_df,"Outputs/HabByAgeCashflows.csv",row.names = FALSE)
 
 #write.csv(cfAll_df,"DoublePlantationYieldsHabByAgeCashflows.csv",row.names = FALSE)
 
