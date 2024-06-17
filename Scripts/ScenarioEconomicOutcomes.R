@@ -25,15 +25,13 @@ discount_6 <- 0.06
 #read in the scenario parametres containing conversion factors for converting from point to parcel/entire landscape  
 source('Inputs/FixedScenarioParmams.R')
 
-#read in folder where scenarios are stored as seperate CSVs
-#scenario_folder <- "R_code/AssessBiodiversityOutcomes/Outputs/scenariosForBirdsToBatch"
+#add in scenarios 
 scenarios <- readRDS("Inputs/MasterAllScenarios.rds")
 
+#get scenario compositions
+scenario_composition <- rbindlist(scenarios, use.names=TRUE) # get scenario composition
 
-# #get the csv file name for each scenario 
-# csv_files <- list.files(scenario_folder, pattern = "*.csv", full.names = TRUE)
-
-# ## Read in DF showing cashflow outcomes - calculated in CalculateAllHabFlows.R
+# Read in DF showing cashflow outcomes - calculated in CalculateAllHabFlows.R
  cashflow <- read.csv("Outputs/HabByAgeCashflows.csv")
 
 #Read in habitats by year
@@ -237,148 +235,14 @@ NPV_fun <- function(x){
     
 } 
  
-NPV_all <- NPV_fun(all_cashflow)
-NPV_protection <- NPV_fun(protection_cashflow)
-NPV_harvest <- NPV_fun(harvest_cashflow)
-#=============
-#-------------
+NPV_all <- NPV_fun(all_cashflow) %>%  cbind(costType = "All_costs")
+NPV_protection <- NPV_fun(protection_cashflow) %>%  cbind(costType = "ProtectionCosts")
+NPV_harvest <- NPV_fun(harvest_cashflow) %>% cbind(costType = "HarvestProfits")
 
 
+allcosts <- NPV_all %>% rbind(NPV_protection) %>% rbind(NPV_harvest) 
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-csv_file_path <- csv_files[[1]]
-#---RUN ONCE ----
-for (csv_file_path  in csv_files) {
-  
-  # Get a single set of scenarios scenario 
-  scenario <- read.csv(csv_file_path)
-  
-  # scenario <- singleTest
-  
-  #make scenario data table format
-  scenario <- as.data.table(scenario)
-  
-  #filter only correct number of delays 
-  scenario <- scenario %>% filtDelay()
-  
-  # Step 1: Remove characters from the 'harvest_delay' column and ensure it's numeric
-  scenario <- scenario %>%
-    mutate(harvest_delay = as.numeric(gsub("[^0-9.]", "", harvest_delay)))
-  
-  #NB the delay is currently set so that functionalhabAge is resetting to 0 for each 
-  #plantation rotation, when in fact the cost of set up in yr 0-12 are only paid once, then they are implicit in the revenues thereafter
-  scenario <- scenario %>%
-    mutate(functionalhabAge = ifelse((grepl("albizia", functional_habitat, ignore.case = TRUE) & true_year > 12) |
-                                       (grepl("eucalyptus", functional_habitat, ignore.case = TRUE) & true_year > 6),
-                                     true_year - harvest_delay, 
-                                     functionalhabAge))
-  
-  # #set the join keys to match on for merge 
-  # setkeyv(birds_10km2, c("habitat", "functionalhabAge"))
-  # setkeyv(scenario, c("functional_habitat", "functionalhabAge"))
-  
-  
-  # # Join that scenarios (based on above set join keys) to cashflow data
-  scen_bio <- scenario[cashflow,
-                       on = .(original_habitat == original_habitat,
-                              functional_habitat == habitat,
-                              functionalhabAge ==  functionalhabAge),
-                       #nomatch = NA,
-                       allow.cartesian=TRUE] %>% na.omit
-  
-  #multiply the cashflow by the num parcels
-  scen_bio <- scen_bio %>% mutate(cashFlow_parcels = (num_parcels*cashFlow)) 
-  # Reset keys (to remove grouping)
-  setkey(scen_bio, NULL)
-  #--------------------------  calculate discounted cashflow -----------------------------
-  
-  # x <- scen_bio %>% filter(index == "all_primary_CY_D.csv 174")
-  #discounted cashflow
-  scen_bio <- scen_bio %>%  ungroup %>% 
-    mutate(                                         
-      cashflow_d2 = cashFlow_parcels* (1/(1+discount_2)^true_year),    #low discount rate = higher NPV, as we value timber returns from the future more
-      cashflow_d4 = cashFlow_parcels*(1/(1+discount_4)^true_year), 
-      cashflow_d6 = cashFlow_parcels*(1/(1+discount_6)^true_year)
-    )
-  x <- scen_bio %>% filter(index == "all_primary_CY_D.csv 174")
-  
-  #--------------------------  calculate NPV -----------------------------
-  
-  #NPV
-  NPV <- scen_bio %>%  
-    group_by(index,production_target) %>%   #this will summarise NPV for each scenario across
-    #1. different harvest delays. #2 different habitat transitions in the scenario
-    summarise(NPV2 = sum(cashflow_d2), 
-              NPV4 = sum(cashflow_d4), 
-              NPV6 = sum(cashflow_d6))
-  
-  
-  # Append the NPV dataframe to the list
-  npv_list[[csv_file_path]] <- NPV
-  
-}
-
-npvdf <- rbindlist(npv_list)
-
-# ---- save list of NPVs for yield-matched scenarios #-----
-#saveRDS(npvdf, "R_code/AssessCarbonMegatreeNPVoutcomes/Outputs/all_costs_NPVs_ofYieldMatchedScenarios.rds")
-#saveRDS(npvdf, "R_code/AssessCarbonMegatreeNPVoutcomes/Outputs/HarvestRevenue_NPVs_ofYieldMatchedScenarios.rds")
-saveRDS(npvdf, "R_code/AssessCarbonMegatreeNPVoutcomes/Outputs/ProtectionCosts_NPVs_ofYieldMatchedScenarios.rds")
-#saveRDS(npvdf, "R_code/AssessCarbonMegatreeNPVoutcomes/Outputs/CutAndRun_NPVs_ofYieldMatchedScenarios.rds")
-#saveRDS(npvdf, "R_code/AssessCarbonMegatreeNPVoutcomes/Outputs/Protection_CutAndRun_NPVs_ofYieldMatchedScenarios.rds")
-
-#double yields
-#saveRDS(npvdf, "R_code/AssessCarbonMegatreeNPVoutcomes/Outputs/DoublePlantYields_HarvestRevenue_NPVs_ofYieldMatchedScenarios.rds")
-
-#triple yields
-#saveRDS(npvdf, "R_code/AssessCarbonMegatreeNPVoutcomes/Outputs/TriplePlantYields_HarvestRevenue_NPVs_ofYieldMatchedScenarios.rds")
-
-
-
-# ---- CAN START HERE -PICK ONE!!! -----
-#all costs and revenues, including costs of protecting unharvested land
-#npvdf <- readRDS("R_code/AssessCarbonMegatreeNPVoutcomes/Outputs/all_costs_NPVs_ofYieldMatchedScenarios.rds.rds")
-#just profit of harvest (plus cost of protecting after harvest)
-#npvdf <- readRDS("R_code/AssessCarbonMegatreeNPVoutcomes/Outputs/HarvestRevenue_NPVs_ofYieldMatchedScenarios.rds")
-#just cost of protection
-#npvdf <- readRDS("R_code/AssessCarbonMegatreeNPVoutcomes/Outputs/ProtectionCosts_NPVs_ofYieldMatchedScenarios.rds")
-#just profit of harvest (with no cost of protecting after harvest)
-#npvdf <- readRDS("R_code/AssessCarbonMegatreeNPVoutcomes/Outputs/CutAndRun_NPVs_ofYieldMatchedScenarios.rds")
-
-
-A<- readRDS("R_code/AssessCarbonMegatreeNPVoutcomes/Outputs/all_costs_NPVs_ofYieldMatchedScenarios.rds") %>% cbind(costType = "All_costs")
-B <- readRDS("R_code/AssessCarbonMegatreeNPVoutcomes/Outputs/HarvestRevenue_NPVs_ofYieldMatchedScenarios.rds") %>% cbind(costType = "HarvestProfits")
-C <- readRDS("R_code/AssessCarbonMegatreeNPVoutcomes/Outputs/ProtectionCosts_NPVs_ofYieldMatchedScenarios.rds") %>%  cbind(costType = "ProtectionCosts")
-D <- readRDS("R_code/AssessCarbonMegatreeNPVoutcomes/Outputs/CutAndRun_NPVs_ofYieldMatchedScenarios.rds") %>%  cbind(costType = "CutAndRun")
-E <- readRDS("R_code/AssessCarbonMegatreeNPVoutcomes/Outputs/Protection_CutAndRun_NPVs_ofYieldMatchedScenarios.rds") %>%  cbind(costType = "ProtectionCosts_CutAndRun")
-allcosts <- A %>% rbind(B) %>% rbind(C) %>% rbind(D) %>% rbind(E)
 allCosts_composition <- scenario_composition %>% left_join(allcosts, by = c("index","production_target"), relationship = "many-to-many")
 
 #-----EXPORT OUTCOME PERFORMANCE for consolidated figure of all outcomes -----
@@ -386,8 +250,8 @@ getwd()
 names(allCosts_composition)
 output <- allCosts_composition %>% select(index, production_target, scenarioName,scenarioStart,
                                           NPV2, NPV4, NPV6,
-                                          costType) %>% cbind(outcome = "profits")
-saveRDS(output, "R_code/AllOutcomesFigure/Data/profits.rds")
+                                          costType) %>% cbind(outcome = "financial")
+saveRDS(output, "Outputs/MasterFinancialPerformance.rds")
 
 #--------------
 
