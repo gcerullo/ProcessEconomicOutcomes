@@ -34,7 +34,7 @@ scenarios <- readRDS("Inputs/MasterAllScenarios.rds")
 # csv_files <- list.files(scenario_folder, pattern = "*.csv", full.names = TRUE)
 
 # ## Read in DF showing cashflow outcomes - calculated in CalculateAllHabFlows.R
-# cashflow <- read.csv("Outputs/HabByAgeCashflows.csv")
+ cashflow <- read.csv("Outputs/HabByAgeCashflows.csv")
 
 #Read in habitats by year
 hab_by_year <- read.csv("Inputs/HabByYears.csv", strip.white = TRUE) %>%  
@@ -42,13 +42,28 @@ hab_by_year <- read.csv("Inputs/HabByYears.csv", strip.white = TRUE) %>%
          functionalhabAge = functional_habAge, 
          habitat = transition_habitat) %>% select(-c(functionalhabAge,X))
 
+#------add temporal information to scenarios ------ 
+#nb, we don't need to add harvest delays because 
+#becuase we already assume staggered application of harvests (1/30th a year) in cashflow calculations
+
+scenarios 
+
+addDelayFun <- function(x){
+ scen <-  x %>% left_join(hab_by_year, by = c("original_habitat", "habitat"),
+            relationship = "many-to-many")
+ return(scen)
+
+}
+
+scenarios_list <- lapply(scenarios, addDelayFun)
+scenarios <- bind_rows(scenarios_list)
+
+
 
 #-----seperate cashflow into (1) harvest profits (2) protection costs  
 
-
 #values are currently in USD/ha so bring to USD/10km2 
 cashflow <- cashflow %>%  mutate(cashFlow = cashFlow*1000)
-
 
 #Harvest profits ####
 #cashflow over entire landscape, including revenues in harvested area, and costs of protection 
@@ -183,115 +198,48 @@ plot_discounted(protection_cashflow)
 plot_discounted(harvest_cashflow)
 plot_discounted(all_cashflow)
 
-# 
-# # 
-# #------------functions --------------------------------------------------------------
-# #1. This function filter a subset of delay years (0,15,29) so that we spend less computer time
-filtDelay <- function(x){
-  x <- x[
-    harvest_delay %in% c(delayFilters) # filter harvest delatys
-  ]
-}
 
-# #----------- chasflow function ------------------------------------------------------
-# #define which delay I want, which in turn determines the harvest window
-# #delayFilters <- single_scenario %>%  select(harvest_delay) %>% unique %>% as.matrix()
-# 
-# delayFilters <- "delay 0"
-# harvest_window <-  length(delayFilters)##how many harvest delays?
+#Calculate NPV ####
+#calculate NPV of scenarios for each of three types of cashflow 
+#one of all_cashflow, protection_cashflow or  harvest cashflow)
 
-# Create an empty list to store NPV dataframes
-npv_list <- list()
-
-#----KEY STEP; define cashflow type -----
-#define if we are interested in cashflow from harvest or from protection
-cashflow <- all_cashflow
-cashflow <- protection_cashflow
-cashflow <- harvest_cashflow
-
-# #singele scenarops 
-# x <- read.csv(csv_files[[15]]) 
-# x<- x %>%  filter(harvest_delay == "delay 0")
-# #singleTest <- x %>% filter(index == "primary_deforested_CY_ND.csv 100" )
-# 
-
-
-#NEED TO COME BACK TO HERE!!!!!!!!!!!!!!!!!!!!
-#GC 14.06.24
-#=============
-#=============
-
-csv_file_path <- csv_files[[1]]
-#---RUN ONCE ----
-
-npvFunction <- function(x) {
-  
-
+NPV_fun <- function(x){
+   
+   scenarios <- as.data.table(scenarios)
+    #define which cashflow we're interested in (one of all_cashflow, protection_cashflow, harvest cashflow)
     
-    # # Get a single set of scenarios scenario 
-    # scenario <- x %>% filtDelay()
-    # 
-    # 
-    # # Step 1: Remove characters from the 'harvest_delay' column and ensure it's numeric
-    # scenario <- scenario %>%
-    #   mutate(harvest_delay = as.numeric(gsub("[^0-9.]", "", harvest_delay)))
-    
-    #NB the delay is currently set so that functionalhabAge is resetting to 0 for each 
-    #plantation rotation, when in fact the cost of set up in yr 0-12 are only paid once, then they are implicit in the revenues thereafter
-    scenario <- x %>%
-      mutate(functionalhabAge = ifelse((grepl("albizia", functional_habitat, ignore.case = TRUE) & true_year > 12) |
-                                         (grepl("eucalyptus", functional_habitat, ignore.case = TRUE) & true_year > 6),
-                                       true_year - harvest_delay, 
-                                       functionalhabAge))
-    
-    # #set the join keys to match on for merge 
-    # setkeyv(birds_10km2, c("habitat", "functionalhabAge"))
-    # setkeyv(scenario, c("functional_habitat", "functionalhabAge"))
-    
+    cashflow <- as.data.table(x) %>% 
+      rename(true_year = functionalhabAge )
     
     # # Join that scenarios (based on above set join keys) to cashflow data
-    scen_bio <- scenario[cashflow,
+    scen_bio <- scenarios[cashflow,
                          on = .(original_habitat == original_habitat,
                                 functional_habitat == habitat,
-                                functionalhabAge ==  functionalhabAge),
-                         #nomatch = NA,
-                         allow.cartesian=TRUE] %>% na.omit
+                                true_year ==  true_year),
+                         nomatch = NA,
+                         allow.cartesian=TRUE] %>% na.omit %>% 
     
     #multiply the cashflow by the num parcels
-    scen_bio <- scen_bio %>% mutate(cashFlow_parcels = (num_parcels*cashFlow)) 
-    # Reset keys (to remove grouping)
-    setkey(scen_bio, NULL)
-    #--------------------------  calculate discounted cashflow -----------------------------
-    
-    # x <- scen_bio %>% filter(index == "all_primary_CY_D.csv 174")
-    #discounted cashflow
-    scen_bio <- scen_bio %>%  ungroup %>% 
+           mutate(cashFlow_parcels = (num_parcels*cashFlow)) %>% 
+      ungroup %>% 
       mutate(                                         
         cashflow_d2 = cashFlow_parcels* (1/(1+discount_2)^true_year),    #low discount rate = higher NPV, as we value timber returns from the future more
         cashflow_d4 = cashFlow_parcels*(1/(1+discount_4)^true_year), 
         cashflow_d6 = cashFlow_parcels*(1/(1+discount_6)^true_year)
-      )
-    x <- scen_bio %>% filter(index == "all_primary_CY_D.csv 174")
-    
-    #--------------------------  calculate NPV -----------------------------
-    
-    #NPV
-    NPV <- scen_bio %>%  
+      )       %>%  
+
+    # calculate NPV 
       group_by(index,production_target) %>%   #this will summarise NPV for each scenario across
       #1. different harvest delays. #2 different habitat transitions in the scenario
       summarise(NPV2 = sum(cashflow_d2), 
                 NPV4 = sum(cashflow_d4), 
                 NPV6 = sum(cashflow_d6))
     
-    
-    # Append the NPV dataframe to the list
-    return(NPV)  
-  }
-  
-  
-lapply(scenarios, npvFunction)
-
-  
+} 
+ 
+NPV_all <- NPV_fun(all_cashflow)
+NPV_protection <- NPV_fun(protection_cashflow)
+NPV_harvest <- NPV_fun(harvest_cashflow)
 #=============
 #-------------
 
