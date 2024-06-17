@@ -253,5 +253,4 @@ output <- allCosts_composition %>% select(index, production_target, scenarioName
                                           costType) %>% cbind(outcome = "financial")
 saveRDS(output, "Outputs/MasterFinancialPerformance.rds")
 
-#--------------
 
