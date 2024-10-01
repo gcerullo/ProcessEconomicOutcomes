@@ -2,7 +2,7 @@
 
 # create  cash flows for scenarios based on Runting et al 2020. 
 # original code written by Rebecca Runting rebecca.runting@unimelb.edu.au
-# subsequent modification by Gianluca cerull grcerullo@gmail.com
+# subsequent modification by Gianluca cerullo grcerullo@gmail.com
 
 #---------------describe management scenarios ---------------------------------------------------------------
 
@@ -38,20 +38,14 @@ mslope <- 16.97 # the mean percent slope in the potential area for Acacia planta
 
 # distance parameters. May want to modify these for Sabah.
 RoadDist <- 3365 #meters (mean from my dataset of the east Kalimantan forest estate of distance to roads)
-LPdist <- 75.813 #km (mean from my dataset of the east Kalimantan forest estate of distance to log pond)
-DistMillKm <-222.43  #222.43 #km (mean from my dataset of the east Kalimantan forest estate of distance to mill)
+LPdist <- 75.813 #km (mean from R. Runting dataset of the east Kalimantan forest estate of distance to log pond)
+DistMillKm <-222.43  #222.43 #km (mean from R. Runting dataset of the east Kalimantan forest estate of distance to mill)
 
 #gianluca edit####
-DistMillKm_plnt <-30#2 distances to mill. 1.DistMillKm  Is for logging and for the 40% of veneer-quality logs
+DistMillKm_plnt <-30  #2 distances to mill. 1.DistMillKm  Is for logging and for the 40% of veneer-quality logs
 #2. DistMillKm_plnt  is for pulped timber (100% of eucalyyptus and 61% albizia), which we assume is pulped at an onsite facility, such as at SSB
 
 
-
-#TO CHECK 
-#1. what distance to apply to mill for my landscape - it might actually make sense to have a different average distance for 
-#(i) plantion and (ii) logging mill, since plantations in my scenarios will always be consolidated around mills, whereas logging can 
-#on average be further away. 
-#2. What is going to be the price I set for veneer and pulpwood - including for FSC pulpwood?
 ##################### PROTECTED AREAS #####################################################
 
 #=========================== NPV ===========================================================
@@ -66,12 +60,12 @@ cf1logPA <- rep(0,61)
 cf2logPA <- rep(0,61)
 for (j in 1:61){
   if (j==1){
-    cfprimaryPA[j] <- -paStrict   #ADD OPPORTUNITY COSTS?
-    cf1logPA[j] <- -paStrict - trans# - onceLOppCost
+    cfprimaryPA[j] <- -paStrict   
+    cf1logPA[j] <- -paStrict - trans
     cf2logPA[j] <- -paStrict  - paEst - trans 
   } else {
-    cfprimaryPA[j] <- -paStrict      #ADD OPPORTUNITY COSTS?
-    cf1logPA[j] <- -paStrict# - onceLOppCost
+    cfprimaryPA[j] <- -paStrict      
+    cf1logPA[j] <- -paStrict
     cf2logPA[j] <- -paStrict 
   }
 }
@@ -139,10 +133,10 @@ for (j in 31:61){
   }}
 
 #========================   strip planting       ================================================
-plantharv<- 40.76148 #m3 per ha. 0.286 cap area of strip planting already aplpied
+plantharv<- 40.76148 #m3 per ha. 0.286 cap area of strip planting already applied
 plantrev <- plantharv*105
 
-##Planting cost # to be applied in yr1. Change the following code to plant <- 418.8 if you want to reflect that strip planting is always close to rodes
+##Planting cost # to be applied in yr1. Change the following code to plant <- 418.8 if you want to reflect that strip planting is always close to roads
 plant <-0
 if (RoadDist<=200){
   plant <- 418.8
@@ -317,9 +311,7 @@ cfAll_df <- cfAll_df %>%
     functionalhabAge = as.numeric(gsub("[^0-9]", "", scenario)) -2) %>% select(-scenario)
 
 #===================== fill in missing habitat types =================================
-#!!!!IF IF i do end up using improved varieties in the df, I will need to actually calculate npvs!
-
-#add  current and improved plantations 
+#add  current (and improved yielding) plantations 
 euc_current <- cfAll_df %>%  filter(habitat == "eucalyptus") %>% 
   mutate(habitat = "eucalyptus_current")
 #euc_improved <- cfAll_df %>%  filter(habitat == "eucalyptus") %>% 
@@ -338,7 +330,7 @@ restored <- cfAll_df %>% filter(habitat == "primary", original_habitat == "prima
   original_habitat = "restored"
 )
 
-#!!!assume no money from deforested land that stays deforested in the scenario
+#assume no money from deforested land that stays deforested in the scenario
 stays_deforested <- data.frame(original_habitat = "deforested", habitat = "deforested", functionalhabAge =0:60, cashFlow = 0)
 
 cfAll_df<- cfAll_df %>% rbind(stays_deforested) %>% rbind(restored) %>% distinct()
