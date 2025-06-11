@@ -46,16 +46,15 @@ hab_by_year <- read.csv("Inputs/HabByYears.csv", strip.white = TRUE) %>%
 
 scenarios 
 
-addDelayFun <- function(x){
+annualiseScenarios <- function(x){
  scen <-  x %>% left_join(hab_by_year, by = c("original_habitat", "habitat"),
             relationship = "many-to-many")
  return(scen)
 
 }
 
-scenarios_list <- lapply(scenarios, addDelayFun)
+scenarios_list <- lapply(scenarios, annualiseScenarios)
 scenarios <- bind_rows(scenarios_list)
-
 
 
 #-----seperate cashflow into (1) harvest profits (2) protection costs  
@@ -250,7 +249,7 @@ getwd()
 names(allCosts_composition)
 output <- allCosts_composition %>% select(index, production_target, scenarioName,scenarioStart,
                                           NPV2, NPV4, NPV6,
-                                          costType) %>% cbind(outcome = "financial")
+                                          costType) %>% cbind(outcome = "financial") %>% unique()
 saveRDS(output, "Outputs/MasterFinancialPerformance.rds")
 
 
