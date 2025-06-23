@@ -42,8 +42,9 @@ LPdist <- 75.813 #km (mean from R. Runting dataset of the east Kalimantan forest
 DistMillKm <-222.43  #222.43 #km (mean from R. Runting dataset of the east Kalimantan forest estate of distance to mill)
 
 #gianluca edit####
-DistMillKm_plnt <-30  #2 distances to mill. 1.DistMillKm  Is for logging and for the 40% of veneer-quality logs
-#2. DistMillKm_plnt  is for pulped timber (100% of eucalyyptus and 61% albizia), which we assume is pulped at an onsite facility, such as at SSB
+DistMillKm_plnt <-30  #2 distances to mill. 
+#NB: 1.DistMillKm  Is for logging and for the 40% of veneer-quality logs
+#    2. DistMillKm_plnt  is for pulped timber (100% of eucalyyptus and 61% albizia), which we assume is pulped at an onsite facility, such as at SSB
 
 
 ##################### PROTECTED AREAS #####################################################
@@ -173,7 +174,6 @@ for (j in 31:61){
 
 ##################### PLANTATIONS #####################################################
 
-# Perhaps include an administrative establishment cost of $154 ha based on official guidelines: Republik Indonesia. Peraturan Menteri Kehutanan Republik Indonesia. Nomor: P.26/Menhut-II/2009. (Republik Indonesia: Jakarta, Indonesia, 2009).
 plantArea <- slope30+slope3045 #not plant  (or clear) slope >45  
 
 # LAND CLEARING -------------------------------
@@ -235,12 +235,15 @@ maint_cost_long <- plantArea*978.58/12  # divide by twelve as maintenance cost i
 
 # HARVESTING ---------------------
 harv_cost <- plantArea*(800+(mslope/100)*700) 
+
 # TRANSPORT --------------------------------------
 #gianluca edit#### 
 trans_cost_long <- DistMillKm*0.08           #transport costs are different because short-rotation pulp is milled on site
 trans_cost_short <- DistMillKm_plnt*0.08     #LR logs are transported as sawnlogs and processed to veneer off-site
+
 # TAX AND ROYALTIES ------------------------------
 tax2 <- 5
+
 # HARVEST PROFIT --------------------------------
 
 harv_prof_short <- rev_short - harv_cost - harv_short*(trans_cost_short + tax2)
