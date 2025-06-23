@@ -1,5 +1,5 @@
 # 14.06.24 GC 
-#This script processes the financial costs (protect) and finanacial profits (from harvest) of each
+#This script processes the financial costs (protection) and finanacial profits (from harvest) of each
 # of my scenarios. The inputs are the the HabByAgeCashflows produced in the CalculateHabCashFlows.R script. 
 
 
@@ -42,7 +42,7 @@ hab_by_year <- read.csv("Inputs/HabByYears.csv", strip.white = TRUE) %>%
 
 #------add temporal information to scenarios ------ 
 #nb, we don't need to add harvest delays because 
-#becuase we already assume staggered application of harvests (1/30th a year) in cashflow calculations
+#because we already assume staggered application of harvests (1/30th a year) in cashflow calculations
 
 scenarios 
 
@@ -97,7 +97,7 @@ harvest_cashflow <- cashflow %>%
 # e.g. for primary -> primary, once-logged - > once-logged, twice-logged -> twice-logged 
 
 #2. FUTURE PROTECTION COSTS
-#Scenario where harvests end at yr 30 = loggers leave and we pay protection costs 
+#Scenario where harvests end at yr 30 = loggers leave and society pay protection costs 
 #eg, primary -> once logged = protection costs from yr 30 
 #eg  once-logged -> twice-logged = protection costs from yr 30 
 
