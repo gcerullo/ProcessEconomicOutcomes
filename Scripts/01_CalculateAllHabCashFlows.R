@@ -339,7 +339,7 @@ stays_deforested <- data.frame(original_habitat = "deforested", habitat = "defor
 cfAll_df<- cfAll_df %>% rbind(stays_deforested) %>% rbind(restored) %>% distinct()
 # =================== write cashflow output  ======================================
 
-write.csv(cfAll_df,"Outputs/HabByAgeCashflows.csv",row.names = FALSE)
+write.csv(cfAll_df,"Outputs/original_HabByAgeCashflows.csv",row.names = FALSE)
 
 #write.csv(cfAll_df,"DoublePlantationYieldsHabByAgeCashflows.csv",row.names = FALSE)
 
